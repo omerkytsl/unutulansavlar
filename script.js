@@ -244,15 +244,15 @@ const savlarData = [
     {
         id: 17,
         sav: "Anug utru tuşa yokka sanmas.",
-        meaning: "Misafire ne ikram edilirse sayılsın.",
+        meaning: "Konuğun önüne koyan yemek ikram edilmiş sayılmaz",
         // ✨ YENİ ALAN EKLENDİ
         fullMeaning:
-            "Az da olsa verilen yemek saygı ifadesidir.",
+            "Misafire yemeği sadece önüne koymakla ikram tamamlanmış sayılmaz; yemeği yedirmek, ona eşlik etmek ve ilgi göstermek gerekir.",
         options: [
-            "Misafir tabağını boş bırakmaz.",
-            "Misafire az ikram etmek ayıptır.",
-            "Misafirin yediği yenmiş sayılmaz.",
-            "Misafire ne ikram edilirse sayılsın.",
+            "Az veren candan, çok veren maldan.",
+            "Misafir on kısmetle gelir, birini yer dokuzunu bırakır.",
+            "Misafir umduğunu değil, bulduğunu yer.",
+            "Konuğun önüne koyan yemek ikram edilmiş sayılmaz",
         ],
         difficulty: "kolay",
     },
