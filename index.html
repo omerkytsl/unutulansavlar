@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unutulan Savlar: Bilgelik Yolu</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div id="welcomeScreen" class="screen active">
+            <div class="welcome-content">
+                <div class="ornament-top">⟡</div>
+                <h1 class="main-title">Unutulan Savlar</h1>
+                <p class="subtitle">Bilgelik Yolu</p>
+                <div class="intro-text">
+                    <p>Günümüzde unutulmuş 283 Türk savını keşfedin.</p>
+                    <p>Köklü kültürümüzün hazinelerini yeniden gün yüzüne çıkarın.</p>
+                </div>
+                <button class="btn-primary" onclick="startGame()">Yolculuğa Başla</button>
+                <div class="ornament-bottom">⟡</div>
+            </div>
+        </div>
+
+        <div id="gameScreen" class="screen">
+            <div class="stats-panel">
+                <div class="stat-card title-card">
+                    <span class="stat-icon" id="trophyIcon">🏆</span>
+                    <div class="stat-info">
+                        <span class="stat-label">Ünvanınız</span>
+                        <span class="stat-value title-value" id="titleText">-</span>
+                    </div>
+                </div>
+                
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <span class="stat-icon">🏆</span>
+                        <div class="stat-info">
+                            <span class="stat-label">Kupa</span>
+                            <span class="stat-value" id="trophyCount">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <span class="stat-icon star-icon">★</span>
+                        <div class="stat-info">
+                            <span class="stat-label">Yıldız</span>
+                            <span class="stat-value" id="starCount">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <span class="stat-icon">☸</span>
+                        <div class="stat-info">
+                            <span class="stat-label">Fal</span>
+                            <span class="stat-value" id="wheelRights">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-label">
+                        <span>İlerleme</span>
+                        <span id="questionProgress">0/10</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="question-card">
+                <div class="question-header">
+                    <span class="header-ornament">◆</span>
+                    <h2 class="question-label">Sav</h2>
+                    <span class="header-ornament">◆</span>
+                </div>
+                <p class="question-text" id="questionText"></p>
+                <div class="divider"></div>
+                <h3 class="options-header">Bu savın anlamı nedir?</h3>
+                <div class="options-grid" id="optionsContainer"></div>
+            </div>
+
+            <div id="fullMeaningDisplay" class="full-meaning-box hidden">
+                <h4 class="meaning-title">Savın Gerçek Anlamı</h4>
+                <p class="meaning-text" id="fullMeaningText"></p>
+            </div>
+
+            <button class="btn-wheel" id="wheelButton" onclick="openWheel()" disabled>
+                <span class="wheel-spin-icon">☸</span>
+                <span>Sav Falı Bak</span>
+            </button>
+        </div>
+
+        <div id="wheelScreen" class="screen">
+            <div class="wheel-content">
+                <div class="wheel-header">
+                    <span class="header-ornament">◆</span>
+                    <h2 class="wheel-title">Çark-ı Felek</h2>
+                    <span class="header-ornament">◆</span>
+                </div>
+                <p class="wheel-subtitle">Sav Falınız</p>
+                
+                <div class="wheel-wrapper">
+                    <div class="wheel-pointer">▼</div>
+                    <canvas id="wheelCanvas" width="400" height="400"></canvas>
+                </div>
+
+                <button class="btn-primary btn-spin" id="spinButton" onclick="spinWheel()">Çarkı Çevir</button>
+                
+                <div id="wheelResult" class="wheel-result hidden">
+                    <div class="result-header">
+                        <span class="header-ornament">⟡</span>
+                        <h3 class="result-title">Sizin İçin Açılan Sav</h3>
+                        <span class="header-ornament">⟡</span>
+                    </div>
+                    <p class="result-text" id="resultText"></p>
+                    <p class="result-meaning" id="resultMeaning"></p>
+                    <button class="btn-secondary" onclick="closeWheel()">Oyuna Dön</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultModal" class="modal hidden">
+            <div class="modal-backdrop" onclick="closeModal()"></div>
+            <div class="modal-content">
+                <div class="modal-icon" id="modalIcon"></div>
+                <h3 class="modal-title" id="modalTitle"></h3>
+                <p class="modal-message" id="modalMessage"></p>
+                <button class="btn-secondary" onclick="closeModal()">Devam Et</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
