@@ -3788,555 +3788,450 @@ const carkSavlari = [
     { sav: "Uluğ kişi uluğlugın bilür.", meaning: "Büyük insan büyüklüğünü bilir." }
 ];
 
-let debugMode = false; // Varsayılan olarak kapalı
+// Diziyi Karıştır (Fisher-Yates) - Mevcut fonksiyon
+function shuffleArray(array) {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[array[i], array[j]] = [array[j], array[i]];
+	}
+}
 
-// ======================================================
-// 2. OYUN DURUMU VE AYARLAR
-// ======================================================
+// Oyun Durumu (availableCarkSavlari eklendi)
 const gameState = {
-    currentSet: [],
-    currentQuestionIndex: 0,
-    correctAnswersInSet: 0,
-    totalStars: 0,
-    wheelRights: 0,
-    currentSetStartIndex: 0,
-    totalTrophies: 0,
-    currentTitle: "-",
-    availableCarkSavlari: [],
-    currentStreak: 0,      
-    questionStartTime: 0   
+	currentSet: [],
+	currentQuestionIndex: 0,
+	correctAnswersInSet: 0,
+	totalStars: 0,
+	wheelRights: 0,
+	currentSetStartIndex: 0,
+	totalTrophies: 0,
+	currentTitle: "-",
+	// YENİ EKLEME: Çark için kullanılabilir savlar
+	availableCarkSavlari: [],
 };
 
+// loadGameState (availableCarkSavlari eklendi)
+function loadGameState() {
+	const saved = localStorage.getItem("unutulanSavlarGameState");
+	if (saved) {
+		const parsedState = JSON.parse(saved);
+		gameState.totalStars = parsedState.totalStars || 0;
+		gameState.wheelRights = parsedState.wheelRights || 0;
+		gameState.currentSetStartIndex = parsedState.currentSetStartIndex || 0;
+		gameState.totalTrophies = parsedState.totalTrophies || 0;
+		gameState.currentTitle = parsedState.currentTitle || "-";
+		// YENİ: Mevcut savları yükle, yoksa boş bir dizi olarak kalsın
+		gameState.availableCarkSavlari = parsedState.availableCarkSavlari || [];
+	}
+
+	// YENİ: Eğer yüklendikten sonra veya ilk başta liste boşsa (tüm savlar kullanılmışsa),
+	// tüm listeyi (carkSavlari) kopyala ve karıştırarak yeniden doldur.
+	if (gameState.availableCarkSavlari.length === 0) {
+		gameState.availableCarkSavlari = [...carkSavlari]; // carkSavlari'nin bir kopyasını al
+		shuffleArray(gameState.availableCarkSavlari);
+	}
+}
+
+// saveGameState (availableCarkSavlari eklendi)
+function saveGameState() {
+	const stateToSave = {
+		totalStars: gameState.totalStars,
+		wheelRights: gameState.wheelRights,
+		currentSetStartIndex: gameState.currentSetStartIndex,
+		totalTrophies: gameState.totalTrophies,
+		currentTitle: gameState.currentTitle,
+		// YENİ: Kullanılabilir savlar listesini kaydet
+		availableCarkSavlari: gameState.availableCarkSavlari,
+	};
+	localStorage.setItem("unutulanSavlarGameState", JSON.stringify(stateToSave));
+}
+
 const titles = [
-    { trophies: 0, name: "-", icon: "🏆", description: "Henüz ünvan kazanmadınız" },
-    { trophies: 1, name: "Kopuzcu", icon: "🎵", description: "Kültür yolunun ilk adımı." },
-    { trophies: 2, name: "Otağ Sakini", icon: "⚔️", description: "Yazılı kültürü temsil eder." },
-    { trophies: 3, name: "Katip", icon: "📜", description: "Devlet bilinci sahibi." },
-    { trophies: 4, name: "Has Hacip", icon: "✒️", description: "Derin felsefeye hakim." },
-    { trophies: 5, name: "Kaşgarlı Mahmut", icon: "📚", description: "Zirve! Türk dilinin piri." },
+	{ trophies: 0, name: "-", icon: "🏆", description: "Henüz ünvan kazanmadınız" },
+	{
+		trophies: 1,
+		name: "Kopuzcu",
+		icon: "🎵",
+		description: "Türk halk edebiyatı ve müzik kültürünün başlangıcı. Bilgeliğe giden yolun ilk adımı.",
+	},
+	{
+		trophies: 2,
+		name: "Otağ Sakini",
+		icon: "⚔️",
+		description: "Yazılı kültürü, kayıt tutmayı ve temel tarih/edebiyat bilgisini temsil eder.",
+	},
+	{
+		trophies: 3,
+		name: "Katip",
+		icon: "📜",
+		description: "Göktürk yazıtları, devlet bilinci ve köklü Türk tarihi hakkında bilgi sahibi.",
+	},
+	{
+		trophies: 4,
+		name: "Has Hacip",
+		icon: "✒️",
+		description: "Kutadgu Bilig'deki devlet ahlakı, yönetim ve felsefe gibi derin konulara hakim.",
+	},
+	{
+		trophies: 5,
+		name: "Kaşgarlı Mahmut",
+		icon: "📚",
+		description: "Zirve! Türk dilinin, tarihinin ve lehçelerinin en kapsamlı bilgisine sahip.",
+	},
 ];
 
-// ======================================================
-// 3. YENİ: BİLİMSEL VERİ ANALİZ SİSTEMİ (DÜZELTİLDİ)
-// ======================================================
-
-function analizKaydet(savAdi, durum, sureMs) {
-    const sureSaniye = (sureMs / 1000).toFixed(2);
-    
-    // --- 1. ADIM: GOOGLE FORMS'A GÖNDER ---
-    const formURL = "https://docs.google.com/forms/d/e/1FAIpQLSf1qCe8tFmsctfauDSS1Ky7GkB_zrhhzbQz-fVU50XXON_qmg/formResponse"; 
-    
-    const urlParams = new URLSearchParams();
-    urlParams.append("entry.1651670903", savAdi);
-    urlParams.append("entry.1364601985", durum);
-    urlParams.append("entry.615675938", sureSaniye);
-
-    fetch(formURL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: urlParams.toString()
-    })
-    .then(() => console.log("Bulut kaydı denendi: " + savAdi))
-    .catch(e => console.error("Bağlantı hatası:", e));
-
-    // --- 2. ADIM: YEREL HAFIZAYA KAYDET (DÜZELTİLEN KISIM) ---
-    // juriRaporu() fonksiyonunun çalışması için bu kısım şarttır.
-    let yerelVeriler = JSON.parse(localStorage.getItem("savHataAnalizi")) || [];
-    
-    yerelVeriler.push({
-        sav: savAdi,
-        durum: durum,
-        sure: sureSaniye,
-        tarih: new Date().toLocaleTimeString()
-    });
-
-    // Hafızayı şişirmemek için son 100 veriyi tutalım
-    if (yerelVeriler.length > 100) {
-        yerelVeriler = yerelVeriler.slice(-100);
-    }
-
-    localStorage.setItem("savHataAnalizi", JSON.stringify(yerelVeriler));
-}
-
-// 📊 JÜRİ PANELİ
-function juriRaporu() {
-    const veriler = JSON.parse(localStorage.getItem("savHataAnalizi"));
-    if (!veriler || veriler.length === 0) {
-        console.warn("Henüz veri toplanmadı. Lütfen birkaç soru çözün.");
-        return;
-    }
-    
-    console.log("%c--- BİLİŞSEL ÖĞRENME VE TEPKİ SÜRESİ ANALİZİ ---", "color: #C9A961; font-weight: bold; font-size: 16px; background: #222; padding: 10px;");
-    
-    // İstatistikler
-    const toplam = veriler.length;
-    const dogrular = veriler.filter(v => v.durum === "Dogru");
-    
-    let ortSure = 0;
-    if(dogrular.length > 0) {
-        ortSure = dogrular.reduce((acc, curr) => acc + parseFloat(curr.sure), 0) / dogrular.length;
-    }
-    
-    console.log(`📌 Toplam Veri: ${toplam}`);
-    console.log(`✅ Doğru Sayısı: ${dogrular.length}`);
-    console.log(`⚡ Ortalama Doğru Cevap Süresi: ${ortSure.toFixed(2)} saniye`);
-    console.log(`(Not: 2sn altı 'Otomatikleşmiş Bilgi', 5sn üstü 'İşlemleme Süreci' olarak yorumlanır.)`);
-    
-    console.table(veriler.slice(-15)); // Son 15 hareketi tablo yap
-}
-window.juriRaporu = juriRaporu;
-
-function sesliOku(metin) {
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); 
-
-        // Gelişmiş Alfabe Dönüştürücü (Fonetik Yama)
-        let telaffuzMetni = metin.toLowerCase()
-            .replace(/q/g, "k")    // q -> k
-            .replace(/w/g, "v")    // w -> v
-            .replace(/x/g, "ks")   // x -> ks
-            .replace(/ŋ/g, "n")    // sağır n
-            .replace(/ñ/g, "n");
-
-        const utterance = new SpeechSynthesisUtterance(telaffuzMetni);
-        const voices = window.speechSynthesis.getVoices();
-        
-        // En net Türkçe sesi seçmeye çalış
-        let secilenSes = voices.find(v => v.lang.includes('tr') && v.name.includes('Google')) || 
-                         voices.find(v => v.lang.includes('tr'));
-
-        if (secilenSes) utterance.voice = secilenSes;
-
-        utterance.lang = 'tr-TR'; 
-        utterance.rate = 0.8; // Daha tane tane okuma için hızı biraz daha düşürdüm
-        window.speechSynthesis.speak(utterance);
-    }
-}
-
-// Bazı tarayıcılarda seslerin yüklenmesi zaman alır, bu olayı dinlemek iyidir
-if ('speechSynthesis' in window) {
-    window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-    };
-}
-
-// ======================================================
-// 4. TEMEL OYUN FONKSİYONLARI
-// ======================================================
-
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-}
-
-function loadGameState() {
-    const saved = localStorage.getItem("unutulanSavlarGameState");
-    if (saved) {
-        const parsedState = JSON.parse(saved);
-        Object.assign(gameState, parsedState);
-    }
-    
-    if (!gameState.availableCarkSavlari || gameState.availableCarkSavlari.length === 0) {
-        gameState.availableCarkSavlari = [...carkSavlari];
-        shuffleArray(gameState.availableCarkSavlari);
-    }
-}
-
-function saveGameState() {
-    localStorage.setItem("unutulanSavlarGameState", JSON.stringify(gameState));
-}
-
+// Get current title based on trophies
 function getCurrentTitle(trophyCount) {
-    for (let i = titles.length - 1; i >= 0; i--) {
-        if (trophyCount >= titles[i].trophies) {
-            return titles[i];
-        }
-    }
-    return titles[0];
+	for (let i = titles.length - 1; i >= 0; i--) {
+		if (trophyCount >= titles[i].trophies) {
+			return titles[i];
+		}
+	}
+	return titles[0];
 }
 
+// Ekranları Göster/Gizle
 function showScreen(screenId) {
-    document.querySelectorAll(".screen").forEach((screen) => {
-        screen.classList.remove("active");
-    });
-    document.getElementById(screenId).classList.add("active");
+	document.querySelectorAll(".screen").forEach((screen) => {
+		screen.classList.remove("active");
+	});
+	document.getElementById(screenId).classList.add("active");
 }
 
+// Oyunu Başlat
 function startGame() {
-    loadGameState();
-    loadNewSet();
-    showScreen("gameScreen");
+	loadGameState();
+	loadNewSet();
+	showScreen("gameScreen");
 }
 
+// Yeni 10'lu Seti Yükle
 function loadNewSet() {
-    const startIndex = gameState.currentSetStartIndex;
-    // Eğer savlarData yeterince büyük değilse veya döngü gerekiyorsa index kontrolü
-    let safeStartIndex = startIndex % savlarData.length;
-    
-    const endIndex = Math.min(safeStartIndex + 10, savlarData.length);
+	// Bir sonraki 10 savı al (veya başa dön)
+	const startIndex = gameState.currentSetStartIndex;
+	const endIndex = Math.min(startIndex + 10, savlarData.length);
 
-    if (savlarData.length > 0) {
-        gameState.currentSet = savlarData.slice(safeStartIndex, endIndex);
-        
-        // Liste sonuna geldiysek ve 10'a tamamlamak gerekiyorsa başa dön
-        if(gameState.currentSet.length < 10 && savlarData.length >= 10) {
-             const needed = 10 - gameState.currentSet.length;
-             gameState.currentSet = gameState.currentSet.concat(savlarData.slice(0, needed));
-        }
-    }
-    
-    shuffleArray(gameState.currentSet);
+	// Savları kopyala ve karıştır
+	gameState.currentSet = [...savlarData.slice(startIndex, endIndex)];
+	shuffleArray(gameState.currentSet);
 
-    gameState.currentQuestionIndex = 0;
-    gameState.correctAnswersInSet = 0;
-    // Streak sıfırlanmıyor, devam ediyor.
+	gameState.currentQuestionIndex = 0;
+	gameState.correctAnswersInSet = 0;
 
-    displayQuestion();
-    updateStats();
+	displayQuestion();
+	updateStats();
+	updateProgressBar();
 }
 
+// Soruyu Göster (GÜNCELLENDİ)
 function displayQuestion() {
-    if (gameState.currentSet.length === 0) return;
+	const question = gameState.currentSet[gameState.currentQuestionIndex];
+	document.getElementById("questionText").textContent = question.sav;
 
-    const question = gameState.currentSet[gameState.currentQuestionIndex];
-    const qTextElement = document.getElementById("questionText");
-    
-    qTextElement.innerHTML = ""; 
-    qTextElement.textContent = question.sav;
+	// ✨ YENİ: Tam Anlam kutucuğunu gizle
+	const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
+	if (fullMeaningDisplay) {
+		fullMeaningDisplay.classList.add("hidden");
+	}
 
-    // 🔊 SES BUTONU
-    const speakBtn = document.createElement("span"); 
-    speakBtn.id = "speakBtn";
-    speakBtn.innerHTML = " 🔊"; 
-    speakBtn.style.cursor = "pointer";
-    speakBtn.style.marginLeft = "10px";
-    speakBtn.onclick = (e) => {
-        e.stopPropagation();
-        sesliOku(question.sav);
-    };
-    qTextElement.appendChild(speakBtn);
+	const optionsContainer = document.getElementById("optionsContainer");
+	optionsContainer.innerHTML = "";
 
-    const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
-    if (fullMeaningDisplay) fullMeaningDisplay.classList.add("hidden");
+	question.options.forEach((option, index) => {
+		const button = document.createElement("button");
+		button.className = "option-btn";
+		button.textContent = option;
+		button.onclick = () => checkAnswer(option, button);
+		optionsContainer.appendChild(button);
+	});
 
-    // Şıkları Oluştur
-    const optionsContainer = document.getElementById("optionsContainer");
-    optionsContainer.innerHTML = "";
-
-    question.options.forEach((option) => {
-        const button = document.createElement("button");
-        button.className = "option-btn";
-        
-        // --- HİLE SİSTEMİ BURADA ---
-        // Eğer debugMode açıksa ve bu şık doğruysa yanına yıldız koy
-        let gosterilecekMetin = option;
-        if (typeof debugMode !== 'undefined' && debugMode === true) {
-            if (option === question.meaning) {
-                gosterilecekMetin += " ★";
-            }
-        }
-        
-        button.textContent = gosterilecekMetin;
-        button.onclick = () => checkAnswer(option, button);
-        optionsContainer.appendChild(button);
-    });
-
-    gameState.questionStartTime = Date.now();
-    updateStats();
+	updateStats();
 }
 
+// Sonraki Soruya Geç (YENİ FONKSİYON)
 function nextQuestion() {
-    const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
-    if (fullMeaningDisplay) fullMeaningDisplay.classList.add("hidden");
+	// Tam Anlam kutucuğunu gizle
+	const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
+	if (fullMeaningDisplay) {
+		fullMeaningDisplay.classList.add("hidden");
+	}
 
-    if (gameState.correctAnswersInSet === 10) {
-        // Set Bitti
-        gameState.totalStars++;
-        gameState.wheelRights++;
+	// Set tamamlandı mı kontrol et
+	if (gameState.correctAnswersInSet === 10) {
+		// Set bitiş işlemleri
+		gameState.totalStars++;
+		gameState.wheelRights++;
 
-        let message = `10 savı doğru bildiniz!`;
-        let modalTitle = "Set Tamamlandı!";
-        let modalIcon = "★";
+		let message = `10 savı doğru bildiniz ve 1 yıldız kazandınız! Ayrıca Sav Falı bakma hakkı kazandınız.`;
+		let modalTitle = "Tebrikler!";
+		let modalIcon = "★";
 
-        if (gameState.totalStars % 5 === 0) {
-            gameState.totalTrophies = Math.floor(gameState.totalStars / 5);
-            const newTitle = getCurrentTitle(gameState.totalTrophies);
-            gameState.currentTitle = newTitle.name;
-            modalIcon = newTitle.icon;
-            modalTitle = "Yeni Ünvan!";
-            message = `${newTitle.name} ünvanını kazandınız!`;
-        }
+		// Kupa kontrolü (her 5 yıldızda bir)
+		if (gameState.totalStars % 5 === 0) {
+			gameState.totalTrophies = Math.floor(gameState.totalStars / 5);
+			const newTitle = getCurrentTitle(gameState.totalTrophies);
+			gameState.currentTitle = newTitle.name;
 
-        saveGameState();
-        showModal(modalIcon, modalTitle, message);
+			modalIcon = newTitle.icon;
+			modalTitle = "Yeni Ünvan Kazandınız!";
+			message = `${gameState.totalTrophies}. kupanızı kazandınız!\n\nYeni ünvanınız: ${newTitle.name}\n\n${newTitle.description}`;
+		}
 
-        gameState.currentSetStartIndex = (gameState.currentSetStartIndex + 10) % savlarData.length;
-        saveGameState();
+		saveGameState();
+		showModal(modalIcon, modalTitle, message);
 
-        setTimeout(() => {
-            loadNewSet();
-        }, 500);
-    } else {
-        gameState.currentQuestionIndex++;
-        displayQuestion();
-    }
+		// Bir sonraki sete geçiş için indeks güncelle
+		gameState.currentSetStartIndex += 10;
+		if (gameState.currentSetStartIndex >= savlarData.length) {
+			gameState.currentSetStartIndex = 0; // Başa dön
+		}
+
+		saveGameState();
+
+		// Modal kapandıktan sonra yeni seti yükle
+		setTimeout(() => {
+			loadNewSet();
+		}, 500); // Küçük bir gecikme ile yeni set yükle
+		
+	} else {
+		// Devam et
+		gameState.currentQuestionIndex++;
+		// Yeni soruyu göster
+		displayQuestion();
+	}
 }
 
-// Cevap Kontrolü
+// Cevabı Kontrol Et (GÜNCELLENDİ: Kaydırma Kodu Eklendi)
 function checkAnswer(selectedOption, button) {
-    const question = gameState.currentSet[gameState.currentQuestionIndex];
-    const allButtons = document.querySelectorAll(".option-btn");
-    
-    // ⏱️ SÜRE HESAPLA (Analiz İçin)
-    const endTime = Date.now();
-    const duration = endTime - gameState.questionStartTime;
+	const question = gameState.currentSet[gameState.currentQuestionIndex];
+	const allButtons = document.querySelectorAll(".option-btn");
 
-    allButtons.forEach((btn) => (btn.disabled = true));
+	// Tam Anlam elementleri
+	const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
+	const fullMeaningText = document.getElementById("fullMeaningText");
 
-    if (selectedOption === question.meaning) {
-        // --- DOĞRU CEVAP ---
-        button.classList.add("correct");
-        gameState.correctAnswersInSet++;
-        gameState.currentStreak++; 
+	// Tüm butonları devre dışı bırak
+	allButtons.forEach((btn) => (btn.disabled = true));
 
-        // Veriyi Kaydet
-        analizKaydet(question.sav, "Dogru", duration);
+	if (selectedOption === question.meaning) {
+		// Doğru cevap
+		button.classList.add("correct");
+		gameState.correctAnswersInSet++;
 
-        const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
-        const fullMeaningText = document.getElementById("fullMeaningText");
+		// ✨ YENİ: Tam Anlamı Göster ve Sonraki Soru Butonunu Ekle
+		if (fullMeaningDisplay && fullMeaningText) {
+			fullMeaningText.textContent = question.fullMeaning || question.meaning;
+			fullMeaningDisplay.classList.remove("hidden");
 
-        if (fullMeaningDisplay && fullMeaningText) {
-            fullMeaningText.textContent = question.fullMeaning || question.meaning;
-            fullMeaningDisplay.classList.remove("hidden");
-            
-            fullMeaningDisplay.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			// *** OTOMATİK KAYDIRMA KODU BURADA ***
+            fullMeaningDisplay.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' // Kutunun üst kısmının görünür olması için
+            });
+            // **********************************
 
-            let nextBtn = fullMeaningDisplay.querySelector("#nextQuestionBtn");
-            if (!nextBtn) {
-                nextBtn = document.createElement("button");
-                nextBtn.id = "nextQuestionBtn";
-                nextBtn.className = "btn-primary next-question-btn";
-                fullMeaningDisplay.appendChild(nextBtn);
-            }
-            
-            nextBtn.textContent = gameState.correctAnswersInSet === 10 ? "Seti Bitir" : "Sonraki Sav";
-            nextBtn.onclick = nextQuestion;
-        }
-    } else {
-        // --- YANLIŞ CEVAP ---
-        button.classList.add("incorrect");
-        gameState.currentStreak = 0; 
+			// Sonraki Soru Butonunu oluştur veya güncelle
+			let nextBtn = fullMeaningDisplay.querySelector("#nextQuestionBtn");
+			if (!nextBtn) {
+				nextBtn = document.createElement("button");
+				nextBtn.id = "nextQuestionBtn";
+				// Önceki yanıtta önerilen butona stil sınıfını ekle
+				nextBtn.className = "btn-primary next-question-btn"; 
+				fullMeaningDisplay.appendChild(nextBtn);
+			}
+			
+			// Setin bitip bitmediğine göre butonun metnini ayarla
+			if (gameState.correctAnswersInSet === 10) {
+				nextBtn.textContent = "Seti Bitir ve Ödülleri Gör";
+			} else {
+				nextBtn.textContent = "Sonraki Savı Gör (İlerle)";
+			}
 
-        // Veriyi Kaydet
-        analizKaydet(question.sav, "Yanlis", duration);
+			nextBtn.onclick = nextQuestion;
+		}
 
-        allButtons.forEach((btn) => {
-            if (btn.textContent === question.meaning) {
-                btn.classList.add("correct");
-            }
-        });
+		// Otomatik ilerleme kaldırıldı. nextQuestion() ile manuel ilerleme bekleniyor.
+		updateStats();
+	} else {
+		// Yanlış cevap - Tam Anlam kutusu gizli kalır
+		button.classList.add("incorrect");
 
-        setTimeout(() => {
-            showModal("✕", "Yanlış Cevap", `Doğru cevap: "${question.meaning}". Seri bozuldu, seti tekrar ediyoruz.`);
-            setTimeout(() => {
-                shuffleArray(gameState.currentSet);
-                gameState.currentQuestionIndex = 0;
-                gameState.correctAnswersInSet = 0;
-                gameState.currentStreak = 0;
-                displayQuestion();
-            }, 1000);
-        }, 1200);
-    }
-    updateStats();
+		// Doğru cevabı göster
+		allButtons.forEach((btn) => {
+			if (btn.textContent === question.meaning) {
+				btn.classList.add("correct");
+			}
+		});
+
+		// Kısa süre sonra (1 saniye) Yanlış Cevap modalını göster
+		setTimeout(() => {
+			showModal("✕", "Yanlış Cevap", `Doğru cevap: "${question.meaning}". Bu 10 soruluk setin başına dönüyorsunuz.`);
+
+			// 1 saniye sonra modal kapandığında seti sıfırla ve yeniden başla
+			setTimeout(() => {
+				// Aynı seti yeniden karıştır ve baştan başla
+				shuffleArray(gameState.currentSet);
+				gameState.currentQuestionIndex = 0;
+				gameState.correctAnswersInSet = 0;
+				displayQuestion();
+			}, 1000);
+		}, 1000);
+	}
 }
 
+// İstatistikleri Güncelle
 function updateStats() {
-    document.getElementById("starCount").textContent = gameState.totalStars;
-    document.getElementById("questionProgress").textContent = `${gameState.correctAnswersInSet}/10`;
-    document.getElementById("wheelRights").textContent = gameState.wheelRights;
-    document.getElementById("trophyCount").textContent = gameState.totalTrophies;
+	document.getElementById("starCount").textContent = gameState.totalStars;
+	document.getElementById("questionProgress").textContent = `${gameState.correctAnswersInSet}/10`;
+	document.getElementById("wheelRights").textContent = gameState.wheelRights;
 
-    const currentTitle = getCurrentTitle(gameState.totalTrophies);
-    document.getElementById("titleText").textContent = currentTitle.name;
-    document.getElementById("trophyIcon").textContent = currentTitle.icon;
+	document.getElementById("trophyCount").textContent = gameState.totalTrophies;
 
-    const wheelButton = document.getElementById("wheelButton");
-    if(wheelButton) wheelButton.disabled = gameState.wheelRights === 0;
+	const currentTitle = getCurrentTitle(gameState.totalTrophies);
+	document.getElementById("titleText").textContent = currentTitle.name;
+	document.getElementById("trophyIcon").textContent = currentTitle.icon;
 
-    // SERİ (STREAK) GÖSTERGESİ
-    let streakElem = document.getElementById("streakDisplay");
-    
-    if (!streakElem) {
-        const starIcon = document.querySelector(".star-icon");
-        if(starIcon) {
-            const parentCard = starIcon.closest(".stat-card"); 
-            if(parentCard) {
-                streakElem = document.createElement("div");
-                streakElem.id = "streakDisplay";
-                streakElem.style.position = "absolute"; 
-                streakElem.style.top = "-10px";
-                streakElem.style.right = "-10px";
-                streakElem.style.background = "#FF4500";
-                streakElem.style.color = "#fff";
-                streakElem.style.borderRadius = "50%";
-                streakElem.style.padding = "5px 8px";
-                streakElem.style.fontSize = "12px";
-                streakElem.style.fontWeight = "bold";
-                streakElem.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)";
-                streakElem.style.zIndex = "10";
-                streakElem.style.display = "none"; 
-                
-                parentCard.style.position = "relative";
-                parentCard.appendChild(streakElem);
-            }
-        }
-    }
-    
-    if(streakElem) {
-         if(gameState.currentStreak > 1) {
-             streakElem.textContent = `🔥${gameState.currentStreak}`;
-             streakElem.style.display = "block";
-             streakElem.style.transform = "scale(1.2)";
-             setTimeout(() => streakElem.style.transform = "scale(1)", 200);
-         } else {
-             streakElem.style.display = "none";
-         }
-    }
+	const wheelButton = document.getElementById("wheelButton");
+	wheelButton.disabled = gameState.wheelRights === 0;
 
-    const progressFill = document.getElementById("progressFill");
-    if(progressFill) {
-        const percentage = (gameState.correctAnswersInSet / 10) * 100;
-        progressFill.style.width = `${percentage}%`;
-    }
-    saveGameState();
+	updateProgressBar();
+
+	saveGameState();
 }
 
+// Modal Göster
 function showModal(icon, title, message) {
-    document.getElementById("modalIcon").textContent = icon;
-    document.getElementById("modalTitle").textContent = title;
-    document.getElementById("modalMessage").textContent = message;
-    document.getElementById("resultModal").classList.remove("hidden");
+	document.getElementById("modalIcon").textContent = icon;
+	document.getElementById("modalTitle").textContent = title;
+	document.getElementById("modalMessage").textContent = message;
+	document.getElementById("resultModal").classList.remove("hidden");
 }
 
+// Modal Kapat
 function closeModal() {
-    document.getElementById("resultModal").classList.add("hidden");
+	document.getElementById("resultModal").classList.add("hidden");
+	// Set bitiminde modal kapandığında yeni setin yüklenmesi gerekiyorsa, 
+	// nextQuestion fonksiyonu bunu zaten hallettiği için burada ekstra bir şey yapmıyoruz.
+	// Hata durumunda set sıfırlaması da checkAnswer'daki setTimeout ile yapılıyor.
 }
 
-// ======================================================
-// 5. ÇARK SİSTEMİ
-// ======================================================
+// Çarkı Aç
 function openWheel() {
-    if (gameState.wheelRights > 0) {
-        showScreen("wheelScreen");
-        drawWheel();
-        document.getElementById("wheelResult").classList.add("hidden");
-        document.getElementById("spinButton").disabled = false;
-    }
+	if (gameState.wheelRights > 0) {
+		showScreen("wheelScreen");
+		drawWheel();
+		document.getElementById("wheelResult").classList.add("hidden");
+		document.getElementById("spinButton").disabled = false;
+	}
 }
 
+// Çarkı Çiz
 function drawWheel() {
-    const canvas = document.getElementById("wheelCanvas");
-    if(!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = 180;
+	const canvas = document.getElementById("wheelCanvas");
+	const ctx = canvas.getContext("2d");
+	const centerX = canvas.width / 2;
+	const centerY = canvas.height / 2;
+	const radius = 180;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+	// Çarkı temizle
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const slices = 8;
-    const sliceAngle = (2 * Math.PI) / slices;
-    const colors = ["#6B4423", "#4A90A4", "#C9A961", "#A0522D", "#D4B896", "#6B4423", "#4A90A4", "#C9A961"];
+	// 8 dilim çiz
+	const slices = 8;
+	const sliceAngle = (2 * Math.PI) / slices;
+	const colors = ["#6B4423", "#4A90A4", "#C9A961", "#A0522D", "#D4B896", "#6B4423", "#4A90A4", "#C9A961"];
 
-    for (let i = 0; i < slices; i++) {
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, i * sliceAngle, (i + 1) * sliceAngle);
-        ctx.closePath();
-        ctx.fillStyle = colors[i];
-        ctx.fill();
-        ctx.strokeStyle = "#FFF8E7";
-        ctx.lineWidth = 3;
-        ctx.stroke();
+	for (let i = 0; i < slices; i++) {
+		ctx.beginPath();
+		ctx.moveTo(centerX, centerY);
+		ctx.arc(centerX, centerY, radius, i * sliceAngle, (i + 1) * sliceAngle);
+		ctx.closePath();
+		ctx.fillStyle = colors[i];
+		ctx.fill();
+		ctx.strokeStyle = "#FFF8E7";
+		ctx.lineWidth = 3;
+		ctx.stroke();
 
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate((i + 0.5) * sliceAngle);
-        ctx.fillStyle = "#FFF8E7";
-        ctx.font = "bold 20px Spectral";
-        ctx.fillText((i + 1).toString(), radius - 40, 10);
-        ctx.restore();
-    }
+		// Sayı yaz
+		ctx.save();
+		ctx.translate(centerX, centerY);
+		ctx.rotate((i + 0.5) * sliceAngle);
+		ctx.fillStyle = "#FFF8E7";
+		ctx.font = "bold 20px Spectral";
+		ctx.fillText((i + 1).toString(), radius - 40, 10);
+		ctx.restore();
+	}
 
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
-    ctx.fillStyle = "#3E2723";
-    ctx.fill();
-    ctx.strokeStyle = "#C9A961";
-    ctx.lineWidth = 4;
-    ctx.stroke();
+	// Merkez daire
+	ctx.beginPath();
+	ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+	ctx.fillStyle = "#3E2723";
+	ctx.fill();
+	ctx.strokeStyle = "#C9A961";
+	ctx.lineWidth = 4;
+	ctx.stroke();
 }
 
+// Çarkı Çevir (availableCarkSavlari kullanılarak güncellendi)
 function spinWheel() {
-    document.getElementById("spinButton").disabled = true;
-    const canvas = document.getElementById("wheelCanvas");
-    const randomRotation = 360 * 5 + Math.random() * 360;
+	document.getElementById("spinButton").disabled = true;
+	const canvas = document.getElementById("wheelCanvas");
+	const randomRotation = 360 * 5 + Math.random() * 360; // 5 tur + rastgele
 
-    canvas.style.transition = "transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)";
-    canvas.style.transform = `rotate(${randomRotation}deg)`;
+	canvas.style.transition = "transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)";
+	canvas.style.transform = `rotate(${randomRotation}deg)`;
 
-    if (!gameState.availableCarkSavlari || gameState.availableCarkSavlari.length === 0) {
-        gameState.availableCarkSavlari = [...carkSavlari];
-        shuffleArray(gameState.availableCarkSavlari);
-    }
+	// Listenin boş olup olmadığını kontrol et (loadGameState zaten yeniden doldurur, bu ek bir güvencedir)
+	if (gameState.availableCarkSavlari.length === 0) {
+		gameState.availableCarkSavlari = [...carkSavlari];
+		shuffleArray(gameState.availableCarkSavlari);
+	}
 
-    const randomIndex = Math.floor(Math.random() * gameState.availableCarkSavlari.length);
-    const randomSav = gameState.availableCarkSavlari.splice(randomIndex, 1)[0];
+	// YENİ: Kalan savlar listesinden rastgele bir indeks seç
+	const randomIndex = Math.floor(Math.random() * gameState.availableCarkSavlari.length);
 
-    setTimeout(() => {
-        document.getElementById("resultText").textContent = randomSav.sav;
-        document.getElementById("resultMeaning").textContent = `Anlamı: ${randomSav.meaning}`;
-        document.getElementById("wheelResult").classList.remove("hidden");
-        gameState.wheelRights--;
-        saveGameState();
-        updateStats();
+	// YENİ: Seçilen savı listeden çıkar (splice) ve değişkene ata ([0] ile diziden öğeyi al)
+	const randomSav = gameState.availableCarkSavlari.splice(randomIndex, 1)[0];
 
-        canvas.style.transition = "none";
-        canvas.style.transform = "rotate(0deg)";
-    }, 4000);
+	setTimeout(() => {
+		// Sonucu göster
+		document.getElementById("resultText").textContent = randomSav.sav;
+		document.getElementById("resultMeaning").textContent = `Anlamı: ${randomSav.meaning}`;
+		document.getElementById("wheelResult").classList.remove("hidden");
+
+		// Hakkı kullan
+		gameState.wheelRights--;
+		saveGameState(); // Güncellenen availableCarkSavlari durumunu kaydet
+		updateStats();
+
+		// Çarkı sıfırla
+		canvas.style.transition = "none";
+		canvas.style.transform = "rotate(0deg)";
+	}, 4000);
 }
 
+// Çarkı Kapat
 function closeWheel() {
-    showScreen("gameScreen");
+	showScreen("gameScreen");
 }
 
-// ======================================================
-// 6. BAŞLATMA
-// ======================================================
+function updateProgressBar() {
+	const progressFill = document.getElementById("progressFill");
+	const percentage = (gameState.correctAnswersInSet / 10) * 100;
+	progressFill.style.width = `${percentage}%`;
+}
+
+// Sayfa yüklendiğinde
 window.addEventListener("load", () => {
-    console.log("Unutulan Savlar: Pro Sürümü Yüklendi!");
-    loadGameState();
-    
-    // HTML onclick'leri için global erişim
-    window.startGame = startGame;
-    window.checkAnswer = checkAnswer;
-    window.openWheel = openWheel;
-    window.closeWheel = closeWheel;
-    window.spinWheel = spinWheel;
-    window.closeModal = closeModal;
-    window.nextQuestion = nextQuestion;
-    window.juriRaporu = juriRaporu; // Konsol erişimi için önemli
+	console.log("Unutulan Savlar: Bilgelik Yolu yüklendi!");
+	loadGameState();
 });
 
-// Konsola "hileAc()" yazınca çalışır
-function hileAc() {
-    debugMode = !debugMode;
-    console.log(debugMode ? "Hile Modu: AKTİF (Doğru cevaplar yıldızla işaretlendi)" : "Hile Modu: KAPALI");
-    displayQuestion(); // Ekranı güncelle
-}
-window.hileAc = hileAc; // Konsoldan erişim için
+// Fonksiyonları global erişime açmak (HTML'de kullanılacaksa önemlidir)
+window.startGame = startGame;
+window.checkAnswer = checkAnswer;
+window.openWheel = openWheel;
+window.closeWheel = closeWheel;
+window.spinWheel = spinWheel;
+window.closeModal = closeModal;
+window.nextQuestion = nextQuestion;
