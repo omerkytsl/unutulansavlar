@@ -4032,6 +4032,54 @@ function displayQuestion() {
     updateStats();
 }
 
+function displayQuestion() {
+    if (gameState.currentSet.length === 0) return;
+
+    const question = gameState.currentSet[gameState.currentQuestionIndex];
+    const qTextElement = document.getElementById("questionText");
+    
+    qTextElement.innerHTML = ""; 
+    qTextElement.textContent = question.sav;
+
+    const speakBtn = document.createElement("span"); 
+    speakBtn.id = "speakBtn";
+    speakBtn.innerHTML = " 🔊"; 
+    speakBtn.style.cursor = "pointer";
+    speakBtn.style.marginLeft = "10px";
+    speakBtn.onclick = (e) => {
+        e.stopPropagation();
+        sesliOku(question.sav);
+    };
+    qTextElement.appendChild(speakBtn);
+
+    const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
+    if (fullMeaningDisplay) fullMeaningDisplay.classList.add("hidden");
+
+
+    const optionsContainer = document.getElementById("optionsContainer");
+    optionsContainer.innerHTML = "";
+
+    question.options.forEach((option) => {
+        const button = document.createElement("button");
+        button.className = "option-btn";
+        
+
+        let gosterilecekMetin = option;
+        if (typeof debugMode !== 'undefined' && debugMode === true) {
+            if (option === question.meaning) {
+                gosterilecekMetin += " ★";
+            }
+        }
+        
+        button.textContent = gosterilecekMetin;
+        button.onclick = () => checkAnswer(option, button);
+        optionsContainer.appendChild(button);
+    });
+
+    gameState.questionStartTime = Date.now();
+    updateStats();
+}
+
 function nextQuestion() {
     const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
     if (fullMeaningDisplay) fullMeaningDisplay.classList.add("hidden");
@@ -4041,7 +4089,7 @@ function nextQuestion() {
         gameState.totalStars++;
         gameState.wheelRights++;
 
-        let message = `10 savı doğru bildiniz!`;
+        let message = "10 savı doğru bildiniz!";
         let modalTitle = "Set Tamamlandı!";
         let modalIcon = "★";
 
@@ -4052,8 +4100,9 @@ function nextQuestion() {
             
             modalIcon = newTitle.icon;
             modalTitle = "Yeni Ünvan!";
-            // Mesajın altına açıklama eklendi
-            message = `"${newTitle.name}" ünvanını kazandınız!<br><small style="opacity:0.9">${newTitle.description}</small>`;
+            
+            // HTML kullanmadan, düz satır atlama (\n) ile açıklamayı ekledik
+            message = '"' + newTitle.name + '" ünvanını kazandınız!\n\n' + newTitle.description;
         }
 
         saveGameState();
