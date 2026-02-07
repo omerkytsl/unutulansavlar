@@ -2229,7 +2229,7 @@ const savlarData = [
         fullMeaning:
             "Eski şey değişmez; katı olan bükülmez.",
         options: [
-            "Kuruğ yıgaç eğilmes, kurmış kiriş tügülmes.",
+            "Kuru ağaç eğilmez, kurumuş yay kopmaz.",
             "Yay kirişi kurumuşsa eğilir.",
             "Kuru ağaç kolayca eğilir.",
             "Sertleşen şey değişime direnir.",
