@@ -3790,9 +3790,7 @@ const carkSavlari = [
 
 let debugMode = false; // Varsayılan olarak kapalı
 
-// ======================================================
-// 2. OYUN DURUMU VE AYARLAR
-// ======================================================
+
 const gameState = {
     currentSet: [],
     currentQuestionIndex: 0,
@@ -3816,14 +3814,9 @@ const titles = [
     { trophies: 5, name: "Kaşgarlı Mahmut", icon: "📚", description: "Zirve! Türk dilinin piri." },
 ];
 
-// ======================================================
-// 3. YENİ: BİLİMSEL VERİ ANALİZ SİSTEMİ (DÜZELTİLDİ)
-// ======================================================
-
 function analizKaydet(savAdi, durum, sureMs) {
     const sureSaniye = (sureMs / 1000).toFixed(2);
     
-    // --- 1. ADIM: GOOGLE FORMS'A GÖNDER ---
     const formURL = "https://docs.google.com/forms/d/e/1FAIpQLSf1qCe8tFmsctfauDSS1Ky7GkB_zrhhzbQz-fVU50XXON_qmg/formResponse"; 
     
     const urlParams = new URLSearchParams();
@@ -3842,8 +3835,6 @@ function analizKaydet(savAdi, durum, sureMs) {
     .then(() => console.log("Bulut kaydı denendi: " + savAdi))
     .catch(e => console.error("Bağlantı hatası:", e));
 
-    // --- 2. ADIM: YEREL HAFIZAYA KAYDET (DÜZELTİLEN KISIM) ---
-    // juriRaporu() fonksiyonunun çalışması için bu kısım şarttır.
     let yerelVeriler = JSON.parse(localStorage.getItem("savHataAnalizi")) || [];
     
     yerelVeriler.push({
@@ -3853,7 +3844,6 @@ function analizKaydet(savAdi, durum, sureMs) {
         tarih: new Date().toLocaleTimeString()
     });
 
-    // Hafızayı şişirmemek için son 100 veriyi tutalım
     if (yerelVeriler.length > 100) {
         yerelVeriler = yerelVeriler.slice(-100);
     }
@@ -3916,16 +3906,12 @@ function sesliOku(metin) {
     }
 }
 
-// Bazı tarayıcılarda seslerin yüklenmesi zaman alır, bu olayı dinlemek iyidir
 if ('speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = () => {
         window.speechSynthesis.getVoices();
     };
 }
 
-// ======================================================
-// 4. TEMEL OYUN FONKSİYONLARI
-// ======================================================
 
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -3975,7 +3961,7 @@ function startGame() {
 
 function loadNewSet() {
     const startIndex = gameState.currentSetStartIndex;
-    // Eğer savlarData yeterince büyük değilse veya döngü gerekiyorsa index kontrolü
+
     let safeStartIndex = startIndex % savlarData.length;
     
     const endIndex = Math.min(safeStartIndex + 10, savlarData.length);
@@ -3994,7 +3980,7 @@ function loadNewSet() {
 
     gameState.currentQuestionIndex = 0;
     gameState.correctAnswersInSet = 0;
-    // Streak sıfırlanmıyor, devam ediyor.
+
 
     displayQuestion();
     updateStats();
@@ -4009,7 +3995,6 @@ function displayQuestion() {
     qTextElement.innerHTML = ""; 
     qTextElement.textContent = question.sav;
 
-    // 🔊 SES BUTONU
     const speakBtn = document.createElement("span"); 
     speakBtn.id = "speakBtn";
     speakBtn.innerHTML = " 🔊"; 
@@ -4024,16 +4009,13 @@ function displayQuestion() {
     const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
     if (fullMeaningDisplay) fullMeaningDisplay.classList.add("hidden");
 
-    // Şıkları Oluştur
     const optionsContainer = document.getElementById("optionsContainer");
     optionsContainer.innerHTML = "";
 
     question.options.forEach((option) => {
         const button = document.createElement("button");
         button.className = "option-btn";
-        
-        // --- HİLE SİSTEMİ BURADA ---
-        // Eğer debugMode açıksa ve bu şık doğruysa yanına yıldız koy
+
         let gosterilecekMetin = option;
         if (typeof debugMode !== 'undefined' && debugMode === true) {
             if (option === question.meaning) {
@@ -4048,6 +4030,45 @@ function displayQuestion() {
 
     gameState.questionStartTime = Date.now();
     updateStats();
+}
+
+function nextQuestion() {
+    const fullMeaningDisplay = document.getElementById("fullMeaningDisplay");
+    if (fullMeaningDisplay) fullMeaningDisplay.classList.add("hidden");
+
+    if (gameState.correctAnswersInSet === 10) {
+        // Set Bitti
+        gameState.totalStars++;
+        gameState.wheelRights++;
+
+        let message = `10 savı doğru bildiniz!`;
+        let modalTitle = "Set Tamamlandı!";
+        let modalIcon = "★";
+
+        if (gameState.totalStars % 5 === 0) {
+            gameState.totalTrophies = Math.floor(gameState.totalStars / 5);
+            const newTitle = getCurrentTitle(gameState.totalTrophies);
+            gameState.currentTitle = newTitle.name;
+            
+            modalIcon = newTitle.icon;
+            modalTitle = "Yeni Ünvan!";
+            // Mesajın altına açıklama eklendi
+            message = `"${newTitle.name}" ünvanını kazandınız!<br><small style="opacity:0.9">${newTitle.description}</small>`;
+        }
+
+        saveGameState();
+        showModal(modalIcon, modalTitle, message);
+
+        gameState.currentSetStartIndex = (gameState.currentSetStartIndex + 10) % savlarData.length;
+        saveGameState();
+
+        setTimeout(() => {
+            loadNewSet();
+        }, 500);
+    } else {
+        gameState.currentQuestionIndex++;
+        displayQuestion();
+    }
 }
 
 function nextQuestion() {
@@ -4092,7 +4113,7 @@ function checkAnswer(selectedOption, button) {
     const question = gameState.currentSet[gameState.currentQuestionIndex];
     const allButtons = document.querySelectorAll(".option-btn");
     
-    // ⏱️ SÜRE HESAPLA (Analiz İçin)
+    //SÜRE HESAPLA
     const endTime = Date.now();
     const duration = endTime - gameState.questionStartTime;
 
@@ -4227,9 +4248,6 @@ function closeModal() {
     document.getElementById("resultModal").classList.add("hidden");
 }
 
-// ======================================================
-// 5. ÇARK SİSTEMİ
-// ======================================================
 function openWheel() {
     if (gameState.wheelRights > 0) {
         showScreen("wheelScreen");
@@ -4315,9 +4333,6 @@ function closeWheel() {
     showScreen("gameScreen");
 }
 
-// ======================================================
-// 6. BAŞLATMA
-// ======================================================
 window.addEventListener("load", () => {
     console.log("Unutulan Savlar: Pro Sürümü Yüklendi!");
     loadGameState();
