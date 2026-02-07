@@ -1954,14 +1954,14 @@ const savlarData = [
     {
         id: 131,
         sav: "Kişi eti tiriğle tatır.",
-        meaning: "İnsan eti taze iken yenir.",
+        meaning: "İnsan etinin tadı sağlığında bulunur.",
         // ✨ YENİ ALAN EKLENDİ
         fullMeaning:
             "Fırsat zamanında değerlendirilir. (Eski bir mecaz)",
         options: [
             "Eti taze olan insan tatlıdır.",
             "Taze et yenmez, taze fırsat kaçmaz.",
-            "İnsan eti taze iken yenir.",
+            "İnsan etinin tadı sağlığında bulunur.",
             "Fırsatlar zamanında kullanılmalıdır.",
         ],
         difficulty: "kolay",
