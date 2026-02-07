@@ -2006,7 +2006,7 @@ const savlarData = [
         options: [
             "Utangaçlık, gelinin ilk adımıdır.",
             "Gelin utangaç olursa evlenmez.",
-            "Gelin utangaçlığı kızlık hâlindendir.",
+            "Gelinin utangaçlığı kızlık hâlindendir.",
             "Kızlık utangaçlığı çabuk geçer.",
         ],
         difficulty: "kolay",
